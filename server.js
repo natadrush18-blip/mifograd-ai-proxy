@@ -9,8 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 const {
-  GIGACHAT_CLIENT_ID,
-  GIGACHAT_CLIENT_SECRET,
+  GIGACHAT_AUTH_KEY,   // ← готовый Authorization key из Сбера (Base64)
   GIGACHAT_SCOPE = 'GIGACHAT_API_PERS',
   PORT = 3000,
 } = process.env;
@@ -23,7 +22,6 @@ async function getGigaChatToken() {
     return tokenCache.value;
   }
 
-  const basic = Buffer.from(`${GIGACHAT_CLIENT_ID}:${GIGACHAT_CLIENT_SECRET}`).toString('base64');
   const rqUID = crypto.randomUUID();
 
   const res = await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', {
@@ -32,13 +30,15 @@ async function getGigaChatToken() {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Accept': 'application/json',
       'RqUID': rqUID,
-      'Authorization': `Basic ${basic}`,
+      // Используем ГОТОВЫЙ Authorization key как есть, без перекодирования
+      'Authorization': `Basic ${GIGACHAT_AUTH_KEY}`,
     },
     body: `scope=${encodeURIComponent(GIGACHAT_SCOPE)}`,
   });
 
   if (!res.ok) {
     const text = await res.text();
+    console.log('OAuth error:', res.status, text);
     throw new Error(`OAuth ${res.status}: ${text.slice(0, 300)}`);
   }
 
@@ -95,8 +95,7 @@ app.get('/', (_, res) => {
   res.json({
     status: 'ok',
     service: 'МифоГрад AI proxy',
-    has_client_id: !!GIGACHAT_CLIENT_ID,
-    has_client_secret: !!GIGACHAT_CLIENT_SECRET,
+    has_auth_key: !!GIGACHAT_AUTH_KEY,
   });
 });
 
